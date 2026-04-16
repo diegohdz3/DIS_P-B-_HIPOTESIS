@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
+import google.generativeai as genai
 
 st.set_page_config(page_title="App Estadística", layout="wide")
 st.title("📊 Análisis Estadístico con Prueba Z")
@@ -243,3 +244,78 @@ elif pagina == "🧪 Prueba Z":
         ax.grid(alpha=0.3)
 
         st.pyplot(fig)
+
+elif pagina == "🤖 Asistente IA":
+    st.header("🤖 Asistente IA (Powered by Gemini)")
+    st.write("Usa la inteligencia artificial para interpretar los resultados de tu análisis estadístico.")
+
+    # 1. Obtener API key
+    st.info(
+        "Para usar esta función, necesitas una API Key de Google AI Studio. Tus credenciales no se guardan, solo se usan durante esta sesión.")
+    api_key = st.text_input("🔑 Pega tu API Key aquí:", type="password")
+
+    if api_key:
+        try:
+            # Configurar la API
+            genai.configure(api_key=api_key)
+            modelo = genai.GenerativeModel('gemini-2.5-flash')  # Usamos un modelo rápido y eficiente
+
+            if "datos" not in st.session_state:
+                st.warning("⚠️ No hay datos carga"
+                           "dos. Por favor, ve a 'Carga de Datos' primero.")
+            else:
+                datos = st.session_state["datos"]
+                nombre_var = st.session_state["nombre_variable"]
+
+                # Calcular estadísticas básicas para el prompt
+                media = np.mean(datos)
+                std = np.std(datos)
+                n = len(datos)
+                sesgo = stats.skew(datos)
+                _, p_norm = stats.shapiro(datos[:50] if len(datos) > 50 else datos)
+
+                st.success("✅ API Key configurada y datos detectados. Listo para analizar.")
+
+                # 2. Construir el prompt
+                prompt = f"""
+                Actúa como un profesor de estadística experto pero accesible. 
+                Tengo un conjunto de datos llamado '{nombre_var}' con las siguientes características:
+                - Tamaño de la muestra (n): {n}
+                - Media muestral: {media:.2f}
+                - Desviación estándar: {std:.2f}
+                - Sesgo: {sesgo:.2f}
+                - P-value de prueba de normalidad (Shapiro-Wilk): {p_norm:.4f}
+
+                Por favor, proporciona:
+                1. Una interpretación breve y clara de qué significa esta distribución de datos (¿es normal? ¿está sesgada?).
+                2. Si un estudiante fuera a realizar una prueba de hipótesis (Prueba Z) con estos datos, ¿qué precauciones debería tener basándose en estas estadísticas?
+                Mantenlo conciso, educativo y fácil de entender.
+                """
+
+                if st.button("🧠 Generar Análisis de la IA", type="primary"):
+                    with st.spinner("Gemini está analizando los datos..."):
+                        # 3. Mostrar respuesta de Gemini
+                        respuesta = modelo.generate_content(prompt)
+
+                        st.markdown("### 📝 Análisis del Profesor IA")
+                        st.info(respuesta.text)
+
+                st.markdown("---")
+
+                # 4. Sección para que el estudiante compare su decisión
+                st.subheader("🤔 Reflexión del Estudiante")
+                st.write(
+                    "Basado en los resultados de la Fase 4 (Prueba Z) y la opinión de la IA, ¿cuál es tu conclusión final?")
+
+                conclusion_estudiante = st.text_area(
+                    "Escribe tu conclusión y compara tu decisión con el análisis de la IA:")
+
+                if st.button("Guardar Reflexión"):
+                    if conclusion_estudiante:
+                        st.success("¡Reflexión guardada con éxito! Gran trabajo analizando los datos.")
+                        st.balloons()
+                    else:
+                        st.warning("Escribe algo antes de guardar.")
+
+        except Exception as e:
+            st.error(f"❌ Hubo un error con la API Key o la conexión: {e}")
